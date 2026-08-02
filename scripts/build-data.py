@@ -20,10 +20,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nce1_grammar import NCE1_GRAMMAR
 
 BOOKS = [
+    # 第一册: 72 单元 (2课=1单元); 二三四册: 每课一单元 (课粒度, 笔记逐课对应)
     ('nce1', '新概念英语第一册', 'NCE1', 72, 1),
-    ('nce2', '新概念英语第二册', 'NCE2', 48, 2),
-    ('nce3', '新概念英语第三册', 'NCE3', 30, 3),
-    ('nce4', '新概念英语第四册', 'NCE4', 24, 4),
+    ('nce2', '新概念英语第二册', 'NCE2', 96, 2),
+    ('nce3', '新概念英语第三册', 'NCE3', 60, 3),
+    ('nce4', '新概念英语第四册', 'NCE4', 48, 4),
 ]
 
 # ========== 0. LiDuoMiao notes 加载 ==========
@@ -49,33 +50,10 @@ def load_notes():
             else:
                 m = re.match(r'^(\d+)\.json$', base)
                 lesson = int(m.group(1)) if m else None
-                if lesson is None or lesson < 1 or lesson > count * 2: continue
+                if lesson is None or lesson < 1 or lesson > count: continue
                 notes[(book_key, lesson)] = data
     return notes
 
-def merge_notes(n1, n2):
-    """合并两课笔记(课粒度 -> 单元): vocabulary/phrases/grammar/sentencePatterns 拼接去重"""
-    if not n1: return n2
-    if not n2: return n1
-    out = dict(n1)
-    for k in ('vocabulary', 'phrases', 'grammar', 'sentencePatterns'):
-        a = n1.get(k) or []
-        b = n2.get(k) or []
-        if k == 'vocabulary':
-            seen = {v.get('word','') for v in a}
-            merged = list(a)
-            for v in b:
-                if v.get('word','') not in seen:
-                    merged.append(v); seen.add(v.get('word',''))
-        else:
-            seen = set()
-            merged = []
-            for item in a + b:
-                key = json.dumps(item, ensure_ascii=False, sort_keys=True)
-                if key not in seen:
-                    seen.add(key); merged.append(item)
-        out[k] = merged
-    return out
 
 def note_vocab_to_list(data):
     """notes vocabulary -> [{w,ipa,pos,def,note}]"""
@@ -323,10 +301,16 @@ def main():
     for key, label, prefix, count, level in BOOKS:
         units = []
         for i in range(1, count + 1):
-            # 所有册统一: 单元 i = 奇数课(2i-1)课文 + 偶数课(2i)单词语法
-            text_lesson = 2 * i - 1   # 奇数课: 课文
-            # NCE1 LRC 文件按单元编号 (NCE1-001.lrc = 单元1 = 课1+2); 其他册按课编号
-            lrc_idx = i if key == 'nce1' else text_lesson
+            if key == 'nce1':
+                # 第一册: 单元 i = 奇数课(2i-1)课文 + 偶数课(2i)单词语法; LRC 按单元编号
+                text_lesson = 2 * i - 1
+                lrc_idx = i
+                note = notes.get((key, i))            # 单元粒度
+            else:
+                # 二三四册: 每课一单元 (课粒度); LRC 按课编号
+                text_lesson = i
+                lrc_idx = i
+                note = notes.get((key, i))            # 课粒度
             file = os.path.join(LRC_DIR, f'{prefix}-{lrc_idx:03d}.lrc')
             if not os.path.exists(file): continue
             meta, lines = parse_lrc(open(file, encoding='utf-8').read())
@@ -335,14 +319,13 @@ def main():
             en_lines = [l['en'] for l in lines if l['en']]
             zh_lines = [l['zh'] for l in lines if l['zh']]
 
+            # 夸克笔记 PDF 资源: nce1 关联奇数课+偶数课; 二三四册关联该课
             if key == 'nce1':
-                note = notes.get((key, i))           # NCE1 notes 已是单元粒度
+                pdf = []
+                for ln in (text_lesson, 2 * i):
+                    pdf += pdf_index.get((key, ln), [])
             else:
-                note = merge_notes(notes.get((key, text_lesson)), notes.get((key, 2*i)))  # 两课合并
-            # 夸克笔记 PDF 资源: 关联奇数课(2i-1) 与偶数课(2i) 的 PDF 文件
-            pdf = []
-            for ln in (text_lesson, 2 * i):
-                pdf += pdf_index.get((key, ln), [])
+                pdf = pdf_index.get((key, i), [])
 
             # ===== 词汇: notes 精选词优先, 课文提取补充, ECDICT 补音标 =====
             vocab = []
@@ -423,7 +406,7 @@ def main():
                 'phrases': phrases,
                 'patterns': patterns,
                 'quizzes': quizzes,
-                'lesson_nums': [text_lesson, 2*i],
+                'lesson_nums': [text_lesson, 2*i] if key == 'nce1' else [text_lesson],
                 'has_detail': bool(pdf),
                 'pdfs': pdf,
             })
