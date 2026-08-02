@@ -1,30 +1,30 @@
 # NCE 学习站数据来源清单
 
 > 本文件记录 `data/` 目录下所有数据的来源，防止下次同步/重下找不到。
-> 最后更新: 2026-08-02 (四册统一 2课=1单元)
+> 最后更新: 2026-08-02 (notes-pdf 改为资源索引)
 
 ## 目录结构
 
 ```
 data/
-├── lrc/          # 四册课文 LRC（英中对照+时间轴）  228 个
-├── audio/        # 四册音频 MP3                     228 个
+├── lrc/          # 四册课文 LRC（英中对照+时间轴）  276 个
+├── audio/        # 四册音频 MP3                     276 个
 ├── notes/        # LiDuoMiao 结构化笔记（主数据源）  276 个
 │   ├── NCE1/     #   72 个 (001-002.json = 单元1, 2课=1单元, 单元粒度)
 │   ├── NCE2/     #   96 个 (01.json = 第1课, 课粒度)
 │   ├── NCE3/     #   60 个 (01.json = 第1课, 课粒度)
 │   └── NCE4/     #   48 个 (01.json = 第1课, 课粒度)
-├── notes-pdf/    # hibenba 夸克英语笔记 PDF（逐课详解补充） 下载中
-│   ├── nce1/     #   72 个 (Lesson001.pdf ~ Lesson144.pdf)
-│   ├── nce2/     #   97 个
-│   ├── nce3/     #   61 个
-│   └── nce4/     #   27 个
+├── notes-pdf/    # hibenba 夸克英语笔记 PDF（仅作可查看资源，不解析内容）258 个
+│   ├── nce1/     #   73 个 (Lesson000 + 奇数课 1~143; 偶数课为练习课源仓库没有)
+│   ├── nce2/     #   97 个 (Lesson000 + 1~96 全)
+│   ├── nce3/     #   61 个 (Lesson000 + 1~60 全)
+│   └── nce4/     #   27 个 (Lesson000 + 1~27, 缺 L21 源仓库没有)
 ├── NCE1-book.json / NCE2-book.json / NCE3-book.json  # 册元数据（旧，仅 dl_audio 用）
 └── stardict.db   # ECDICT 词典（812MB，音标/释义/柯林斯星级补充）
 ```
 
-> 注: 原 data/NCE2（迷你笔记）、data/NCE3、data/NCE4（docx 笔记）已于 2026-08-02 删除，
-> 由 LiDuoMiao notes（结构化主源）+ hibenba notes-pdf（详解补充）替代。
+> 注: 原 data/NCE2（迷你笔记）、data/NCE3、data/NCE4（docx 笔记）已于 2026-08-02 删除；
+> library/（用户上传 Lesson PDF）已删除，由 hibenba notes-pdf 替代（仅作资源）。
 
 ## 四册统一结构（2026-08-02 起）
 
@@ -64,25 +64,25 @@ data/
 - 本项目用的是 sqlite 版，拷贝为 `stardict.db`
 - 注意: Release assets 没有 csv，只有 sqlite/其他格式
 
-### 4. docx 笔记（详解补充：NCE3/NCE4）
-- 用户上传的《新概念3/4册完整笔记》docx
-- NCE3 全 60 课，NCE4 仅 32 课（用户只上传了 32 课）
-- 提供词根词缀/近义词/真题详解，作为词汇 note 字段
-
-### 5. 用户上传 Lesson PDF（详细讲义）
-- 存放: `library/nce1/`（如 Lesson001.pdf ~ Lesson039.pdf）
-- 构建时自动解析挂载到对应单元
-- NCE1 单元映射: Lesson N → 单元 (N+1)//2；NCE2/3/4: Lesson N → 单元 N
+### 4. hibenba 夸克英语笔记 PDF（资源：可查看/下载，不解析内容）
+- **GitHub**: `https://github.com/hibenba/New-Concept-English`
+- 每课 PDF 含单词+音标+词性+释义+文法；本项目仅作为"本课资料/资料库"可查看资源
+- 下载脚本: `scripts/dl_notes_pdf.py`（批量下载 258 个，需代理）
+- 构建时扫描生成索引（library.json + 单元 pdfs 字段），`file` 字段 = `pdf/{nce1..4}/LessonXXX.pdf`
+- 部署: `sudo rsync -a data/notes-pdf/ /opt/1panel/www/sites/nce/index/pdf/`
 
 ## 重建命令
 
 ```bash
 cd /data/.default/nce-site
-npm run build          # 先跑 build-data.py 再 vite build
-sudo rsync -a dist/index.html dist/assets/ /opt/1panel/www/sites/nce/index/
-sudo rsync -a dist/data/ /opt/1panel/www/sites/nce/index/data/
-sudo rsync -a data/audio/ /opt/1panel/www/sites/nce/index/audio/   # 461MB+，增量同步
+python3 scripts/build-data.py   # 生成 public/data/（index.json + units/ + library.json）
+npm run build                   # vite 打包 dist
+sudo rsync -a dist/ /opt/1panel/www/sites/nce/index/ --delete --exclude audio/ --exclude pdf/
+sudo rsync -a data/audio/ /opt/1panel/www/sites/nce/index/audio/      # 617MB，增量同步
+sudo rsync -a data/notes-pdf/ /opt/1panel/www/sites/nce/index/pdf/    # 334MB，增量同步
 ```
+
+> ⚠️ 部署 `dist/` 时务必 `--exclude audio/ --exclude pdf/`，否则会把单独部署的音频/PDF 删掉。
 
 ## 构建脚本职责
 

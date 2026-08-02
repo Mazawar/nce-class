@@ -4,12 +4,10 @@
 NCE 学习站 v2 数据构建器 (v3 重构版)
 数据源 (优先级从高到低):
   1. LiDuoMiao notes 结构化笔记 (每课精选词汇+词组+语法+句型)  data/notes/{NCE1,NCE2,NCE3,NCE4}/*.json
-  2. LRC 课文 (英中对照+时间轴+音频)   data/lrc/*.lrc
-  3. 用户上传 Lesson PDF (详细讲义)    library/
-  4. ECDICT 词典 (音标补充)            data/stardict.db
-  5. NCE3/NCE4 docx 笔记               data/NCE3|NCE4/
-  6. NCE2 迷你笔记 + NCE1 标准语法表   (兜底)
-输出: /data/.default/nce-site/public/data/ (index.json + units/{nce1,nce2,nce3}/*.json + library.json)
+  2. hibenba 夸克英语笔记 PDF (仅作可查看资源, 不解析内容)     data/notes-pdf/{nce1,nce2,nce3,nce4}/Lesson*.pdf -> 部署为 /pdf/
+  3. LRC 课文 (英中对照+时间轴+音频)                          data/lrc/*.lrc
+  4. ECDICT 词典 (音标补充)                                   data/stardict.db
+输出: /data/.default/nce-site/public/data/ (index.json + units/{nce1,nce2,nce3,nce4}/*.json + library.json)
 """
 import os, re, json, glob, sys, random, sqlite3
 
@@ -237,60 +235,6 @@ def extract_vocab(en_lines):
                 seen.add(w); order.append(w)
     return order, counts
 
-# ========== NCE3/4 docx 笔记增强解析 ==========
-# ========== 用户 Lesson PDF 解析 ==========
-def parse_lesson_pdf(path):
-    import subprocess, tempfile
-    with tempfile.NamedTemporaryFile(suffix='.txt', delete=False, mode='w') as tf:
-        tmp = tf.name
-    subprocess.run(['pdftotext', path, tmp], check=True, capture_output=True)
-    text = open(tmp, encoding='utf-8', errors='ignore').read()
-    os.unlink(tmp)
-    lines = [l.strip() for l in text.split('\n') if l.strip()]
-
-    words = []
-    grammar = []
-    sentences = []
-    i = 0
-    part = 0
-    while i < len(lines):
-        line = lines[i]
-        if re.match(r'^Part\d+', line):
-            part = int(re.search(r'Part(\d+)', line).group(1))
-            i += 1; continue
-        m = re.match(r'^([A-Za-z][A-Za-z\s\-]*?)\s*[（(]?美[）)]?\s*/([^/]+)/\s*(?:（(?:美|英)[）)]?\s*/([^/]+)/\s*)?((?:n|v|adj|adv|prep|pron|conj|num|art|int|aux)\.?)\s*(.*)$', line)
-        if not m:
-            m = re.match(r'^([A-Za-z][A-Za-z\s\-]*?)\s*/([^/]+)/\s*((?:n|v|adj|adv|prep|pron|conj|num|art|int|aux)\.?)\s*(.*)$', line)
-        if m and part == 1:
-            word = m.group(1).strip()
-            ipa = f"/{m.group(2)}/"
-            pos = m.group(4) if m.lastindex >= 4 else ''
-            meaning = m.group(5) if m.lastindex >= 5 else ''
-            note_lines = []
-            j = i + 1
-            while j < len(lines):
-                nl = lines[j]
-                if re.match(r'^Part\d+', nl): break
-                if re.match(r'^[A-Za-z][A-Za-z\s\-]*?\s*[（(]?美[）)]?\s*/([^/]+)/', nl) or re.match(r'^[A-Za-z][A-Za-z\s\-]*?\s*/([^/]+)/', nl):
-                    break
-                note_lines.append(nl)
-                j += 1
-            if word:
-                words.append({'w': word.lower(), 'ipa': ipa, 'pos': pos, 'def': meaning,
-                              'note': '\n'.join(note_lines[:20])[:600]})
-            i = j
-            continue
-        if part == 2 and re.search(r'[a-zA-Z]{3,}', line) and re.search(r'[\u4e00-\u9fff]', line):
-            sentences.append(line)
-        if part == 2 and re.search(r'[\u4e00-\u9fff]', line) and re.search(r'(句型|用法|结构|形式|否定|疑问|比较|时态|语态|从句|主格|宾格|人称|复数|动词|名词|形容词|副词|介词|连词|代词|冠词)', line):
-            grammar.append(line[:200])
-        i += 1
-    seen = set(); uniq = []
-    for w in words:
-        if w['w'] not in seen:
-            seen.add(w['w']); uniq.append(w)
-    return {'words': uniq, 'grammar': grammar[:10], 'sentences': sentences[:15]}
-
 # ========== 训练题生成 (增强版) ==========
 def gen_quiz(unit_title, en_lines, zh_lines, vocab, ecd, book_level):
     quizzes = []
@@ -354,37 +298,22 @@ def gen_quiz(unit_title, en_lines, zh_lines, vocab, ecd, book_level):
 def main():
     ecd = ECDICT(ECDB)
 
-    # 用户 Lesson PDF
-    pdf_dir = '/data/.default/nce-site/library'
-    lesson_pdfs = {}
-    pdf_by_unit = {}
-    for f in glob.glob(f'{pdf_dir}/**/Lesson*.pdf', recursive=True):
-        m = re.search(r'Lesson\s*(\d+)', os.path.basename(f))
-        if not m: continue
-        num = int(m.group(1))
-        rel = os.path.relpath(f, pdf_dir)
-        book_key = 'nce1'
-        if 'nce2' in rel: book_key = 'nce2'
-        elif 'nce3' in rel: book_key = 'nce3'
-        elif 'nce4' in rel: book_key = 'nce4'
-        # 所有册: Lesson N -> 单元 (N+1)//2 (2课=1单元)
-        unit = (num + 1) // 2
-        is_odd = (num % 2 == 1)   # 所有册: 奇数=课文课, 偶数=语法练习课
-        parsed = parse_lesson_pdf(f)
-        parsed['lesson_num'] = num
-        parsed['is_text_lesson'] = is_odd
-        if (book_key, unit) in lesson_pdfs:
-            ex = lesson_pdfs[(book_key, unit)]
-            seen = {w['w'] for w in ex['words']}
-            for w in parsed['words']:
-                if w['w'] not in seen:
-                    ex['words'].append(w)
-            ex['sentences'].extend(parsed['sentences'])
-            ex['grammar'].extend(parsed['grammar'])
-        else:
-            lesson_pdfs[(book_key, unit)] = parsed
-        pdf_by_unit.setdefault((book_key, unit), []).append(rel)
-        print(f'  PDF Lesson{num} ({["语法练习","课文"][is_odd]}) -> {book_key} 单元{unit}')
+    # 扫描 hibenba 夸克英语笔记 PDF（notes-pdf, 仅作资源索引, 不解析内容）
+    NOTES_PDF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'notes-pdf')
+    pdf_index = {}   # (book_key, lesson) -> [{'name','file','size'}]
+    for bk_dir, book_key in [('nce1', 'nce1'), ('nce2', 'nce2'), ('nce3', 'nce3'), ('nce4', 'nce4')]:
+        d = os.path.join(NOTES_PDF_DIR, bk_dir)
+        if not os.path.isdir(d): continue
+        for f in sorted(glob.glob(os.path.join(d, 'Lesson*.pdf'))):
+            m = re.search(r'Lesson\s*(\d+)', os.path.basename(f))
+            if not m: continue
+            num = int(m.group(1))
+            pdf_index.setdefault((book_key, num), []).append({
+                'name': os.path.basename(f),
+                'file': f'pdf/{bk_dir}/{os.path.basename(f)}',
+                'size': os.path.getsize(f),
+            })
+    print(f'夸克笔记 PDF 资源: {sum(len(v) for v in pdf_index.values())} 个')
 
     # 加载 LiDuoMiao 结构化笔记
     notes = load_notes()
@@ -410,7 +339,10 @@ def main():
                 note = notes.get((key, i))           # NCE1 notes 已是单元粒度
             else:
                 note = merge_notes(notes.get((key, text_lesson)), notes.get((key, 2*i)))  # 两课合并
-            pdf = lesson_pdfs.get((key, i), None)
+            # 夸克笔记 PDF 资源: 关联奇数课(2i-1) 与偶数课(2i) 的 PDF 文件
+            pdf = []
+            for ln in (text_lesson, 2 * i):
+                pdf += pdf_index.get((key, ln), [])
 
             # ===== 词汇: notes 精选词优先, 课文提取补充, ECDICT 补音标 =====
             vocab = []
@@ -436,18 +368,7 @@ def main():
                                   'collins': info.get('collins',0), 'exchange': info.get('exchange','')})
                     seen.add(w)
                     if len(vocab) >= 25: break
-            # 3. PDF 词汇补充 (用户上传详细讲义)
-            if pdf and pdf['words']:
-                for w in pdf['words']:
-                    if w['w'] in seen: continue
-                    info = ecd.get(w['w']) or {}
-                    vocab.append({'w': w['w'], 'ipa': w.get('ipa','') or info.get('ipa',''),
-                                  'pos': w.get('pos','') or info.get('pos',''),
-                                  'def': w.get('def','') or info.get('def',''),
-                                  'freq': 1, 'collins': info.get('collins',0),
-                                  'exchange': info.get('exchange',''), 'note': w.get('note','')})
-                    seen.add(w['w'])
-            # 4. (docx 笔记已移除, 由 notes-pdf 或用户 PDF 补充)
+            # 3. (PDF 仅作资源, 不解析补充词汇)
             vocab = vocab[:30]
 
             # ===== 语法: notes 结构化优先 =====
@@ -464,8 +385,6 @@ def main():
                     if ex_str: parts.append(f"例句：\n{ex_str}")
                     grammar.append({'title': g.get('title', '语法点'),
                                     'body': '\n'.join(parts)})
-            elif pdf and pdf['grammar']:
-                grammar = [{'title': g[:40], 'body': g} for g in pdf['grammar'][:8]]
             elif key == 'nce1' and i in NCE1_GRAMMAR:
                 grammar = [{'title': g, 'body': ''} for g in NCE1_GRAMMAR[i]]
 
@@ -493,11 +412,6 @@ def main():
 
             # ===== 训练题 =====
             quizzes = gen_quiz(title, en_lines, zh_lines, vocab, ecd, level)
-            if pdf:
-                for s in pdf['sentences'][:3]:
-                    if len(quizzes) >= 10: break
-                    quizzes.append({'type': 'trans', 'q': s, 'opts': [], 'answer': '见课文',
-                                    'explain': s})
 
             units.append({
                 'id': i, 'title': title,
@@ -511,7 +425,7 @@ def main():
                 'quizzes': quizzes,
                 'lesson_nums': [text_lesson, 2*i],
                 'has_detail': bool(pdf),
-                'pdfs': [{'file': 'library/' + p, 'name': os.path.basename(p)} for p in pdf_by_unit.get((key, i), [])],
+                'pdfs': pdf,
             })
         result[key] = {'label': label, 'units': units}
         total_v = sum(len(u['vocab']) for u in units)
@@ -550,22 +464,9 @@ def main():
     print(f'写入索引 ({os.path.getsize(os.path.join(OUT_DIR,"index.json"))/1024:.0f}KB)')
 
     lib_index = []
-    for f in glob.glob('/data/.default/nce-site/library/**/*.pdf', recursive=True):
-        rel = os.path.relpath(f, '/data/.default/nce-site/library')
-        m = re.search(r'Lesson\s*(\d+)', os.path.basename(f))
-        num = int(m.group(1)) if m else 0
-        book = 'nce1'
-        if 'nce2' in rel: book = 'nce2'
-        elif 'nce3' in rel: book = 'nce3'
-        elif 'nce4' in rel: book = 'nce4'
-        lib_index.append({
-            'file': 'library/' + rel,
-            'name': os.path.basename(f),
-            'lesson': num,
-            'book': book,
-            'size': os.path.getsize(f),
-        })
-    lib_index.sort(key=lambda x: (x['book'], x['lesson']))
+    for (bk, ln), items in sorted(pdf_index.items()):
+        for it in items:
+            lib_index.append({'book': bk, 'lesson': ln, 'name': it['name'], 'file': it['file'], 'size': it['size']})
     with open(os.path.join(OUT_DIR, 'library.json'), 'w', encoding='utf-8') as f:
         json.dump(lib_index, f, ensure_ascii=False)
     print(f'资料库索引: {len(lib_index)} 个 PDF')
