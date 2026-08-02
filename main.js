@@ -30,13 +30,48 @@ const searchInput = document.getElementById('search-input');
 const tabs = document.getElementById('tabs');
 const audioEl = document.getElementById('audio-player');
 
+// 音频播放: 自签证书下 <audio> 元素媒体加载可能被浏览器拦截,
+// 用 fetch 拉取转 Blob URL 绕开证书校验(与 PDF fetch 同理)
+let audioBlobUrl = null;
+let audioFetchFailed = false;
+
+async function loadAudioWithFallback(src) {
+  audioFetchFailed = false;
+  if (audioBlobUrl) { try { URL.revokeObjectURL(audioBlobUrl); } catch (e) {} audioBlobUrl = null; }
+  audioEl.src = src;
+  audioEl.load();
+  // 原生 <audio> 可能因证书失败, 预取一次验证; 成功则用 blob URL 兜底
+  try {
+    const res = await fetch(src);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    if (audioFetchFailed) return; // 已被用户切换
+    audioBlobUrl = URL.createObjectURL(blob);
+    // 仅当原生加载失败时才切换 blob URL
+    if (audioEl.error || audioEl.readyState === 0) {
+      audioEl.src = audioBlobUrl;
+      audioEl.load();
+    }
+  } catch (e) {
+    // fetch 也失败: 保留原生错误提示
+  }
+}
+
 // 音频错误: 页面可见提示 (手机 WebView 无法播放时定位原因)
 audioEl.addEventListener('error', () => {
+  audioFetchFailed = true;
   const info = document.getElementById('listen-info');
   if (info) {
     const code = audioEl.error ? audioEl.error.code : '?';
     info.textContent = '⚠️ 音频加载失败 (错误码 ' + code + ')，请尝试系统浏览器打开本站';
     info.style.color = '#ff6b6b';
+  }
+  // 有 blob URL 则切换到它
+  if (audioBlobUrl) {
+    audioEl.src = audioBlobUrl;
+    audioEl.load();
+    const info = document.getElementById('listen-info');
+    if (info) { info.textContent = '已切换离线缓存播放'; info.style.color = 'var(--text-2)'; }
   }
 });
 
@@ -170,8 +205,7 @@ async function selectUnit(id, tab) {
   content.innerHTML = `<div class="empty-state"><div class="empty-orb" style="animation:orbFloat 1.2s ease-in-out infinite">⏳</div><div class="empty-title">加载课程中…</div></div>`;
   try {
     const unit = await loadUnit(currentBook, id);
-    audio.src = unit.audio;
-    audio.load();
+    loadAudioWithFallback(unit.audio);
     updateTabCounts(meta);
     // 按当前 tab 渲染
     if (currentTab === 'words') renderWords(unit);
@@ -797,6 +831,7 @@ function updatePlayButtons() {
 
 function stopPlayback() {
   if (audio) { audio.pause(); audio.currentTime = 0; }
+  if (audioBlobUrl) { try { URL.revokeObjectURL(audioBlobUrl); } catch (e) {} audioBlobUrl = null; }
   updatePlayButtons();
   setCurrentLine(-1);
 }
