@@ -76,7 +76,6 @@
       <button class="tab" data-tab="words" onclick="switchTab('words')"><span>🔤</span>单词<span class="tab-count" id="tab-count-words">0</span></button>
       <button class="tab" data-tab="grammar" onclick="switchTab('grammar')"><span>🧩</span>语法<span class="tab-count" id="tab-count-grammar">0</span></button>
       <button class="tab" data-tab="quiz" onclick="switchTab('quiz')"><span>✏️</span>训练<span class="tab-count" id="tab-count-quiz">0</span></button>
-      <button class="tab" data-tab="library" onclick="switchTab('library')"><span>📁</span>资料库<span class="tab-count" id="tab-count-lib">0</span></button>
     </nav>
 
     <!-- 内容 -->
@@ -92,14 +91,36 @@
 
 <audio id="audio-player" preload="auto"></audio>
 
+<!-- 资料库独立页面 -->
+<div class="lib-page" id="lib-page">
+  <div class="lib-page-head">
+    <div class="lib-page-title">📁 资料库</div>
+    <div class="lib-page-search">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="lib-search" placeholder="搜索 PDF / 课号…" autocomplete="off">
+    </div>
+    <div class="lib-page-actions">
+      <button class="btn btn-primary" id="lib-batch-dl" onclick="libBatchDownload()" disabled>⬇ 批量下载</button>
+      <button class="btn-icon" onclick="closeLibrary()" title="关闭">✕</button>
+    </div>
+  </div>
+  <div class="lib-page-body" id="lib-page-body"></div>
+</div>
+
 <!-- PDF 内嵌查看器 -->
 <div class="pdf-modal" id="pdf-modal" onclick="closePdfViewer(event)">
   <div class="pdf-modal-box">
     <div class="pdf-modal-head">
       <div class="pdf-modal-title" id="pdf-modal-title">PDF</div>
-      <button class="btn-icon" onclick="closePdfViewer()" title="关闭">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <a class="btn btn-small" id="pdf-dl-btn" href="#" download style="font-size:12px;padding:5px 12px;text-decoration:none" title="下载 PDF">⬇ 下载</a>
+        <button class="btn-icon" onclick="closePdfViewer()" title="关闭">✕</button>
+      </div>
     </div>
-    <iframe class="pdf-frame" id="pdf-frame" src="about:blank"></iframe>
+    <div class="pdf-frame" id="pdf-frame">
+      <div class="pdf-loading" id="pdf-loading">⏳ 加载 PDF 中…</div>
+      <div class="pdf-pages" id="pdf-pages"></div>
+    </div>
   </div>
 </div>
 

@@ -1,4 +1,9 @@
 import './style.css';
+import './pdfjs-polyfill.js';
+import * as pdfjsLib from 'pdfjs-dist';
+import PdfJsWorker from 'pdfjs-dist/build/pdf.worker.min.js?worker';
+// 用 vite ?worker 预建 worker, 绕开动态 import/fake worker (老内核兼容)
+pdfjsLib.GlobalWorkerOptions.workerPort = new PdfJsWorker();
 
 // ====== STATE ======
 const INDEX_URL = './data/index.json';
@@ -24,6 +29,16 @@ const btnPlay = document.getElementById('btn-play');
 const searchInput = document.getElementById('search-input');
 const tabs = document.getElementById('tabs');
 const audioEl = document.getElementById('audio-player');
+
+// 音频错误: 页面可见提示 (手机 WebView 无法播放时定位原因)
+audioEl.addEventListener('error', () => {
+  const info = document.getElementById('listen-info');
+  if (info) {
+    const code = audioEl.error ? audioEl.error.code : '?';
+    info.textContent = '⚠️ 音频加载失败 (错误码 ' + code + ')，请尝试系统浏览器打开本站';
+    info.style.color = '#ff6b6b';
+  }
+});
 
 // ====== LOAD ======
 async function init() {
@@ -177,6 +192,7 @@ function headPdfChips(unit) {
       <span class="unit-pdf-icon">📄</span>
       <span class="unit-pdf-name">${escHtml(p.name.replace('.pdf', ''))}</span>
       <span class="unit-pdf-type">笔记</span>
+      <a class="unit-pdf-dl" href="${encodeURIComponent(p.file)}" download="${escHtmlAttr(p.name)}" onclick="event.stopPropagation()" title="下载笔记">⬇</a>
     </span>`;
   }).join('');
 }
@@ -231,7 +247,7 @@ async function switchTab(tab) {
       history.replaceState(null, '', `#/${currentBook}/${currentUnit}/${tab}`);
     }
   } catch (e) {}
-  if (tab === 'library') { renderLibrary(); content.scrollTop = 0; return; }
+  if (tab === 'library') { openLibrary(); return; }
   const unit = getUnit();
   if (!unit) {
     // 数据未加载（直接点 tab 时）
@@ -541,17 +557,43 @@ function quizFinish() {
   }
 }
 
-// ====== 资料库 ======
-function showLibrary() { switchTab('library'); }
+// ====== 资料库 (独立页面) ======
+function showLibrary() { openLibrary(); }
+
+function openLibrary() {
+  const page = document.getElementById('lib-page');
+  if (!page) return;
+  page.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  const inp = document.getElementById('lib-search');
+  if (inp) inp.value = '';
+  renderLibrary();
+  if (inp) setTimeout(() => inp.focus(), 50);
+}
+
+function closeLibrary() {
+  const page = document.getElementById('lib-page');
+  if (!page) return;
+  page.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Esc 关闭资料库
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLibrary();
+});
+
+function libSearchInput() { renderLibrary(); }
 
 function renderLibrary() {
   if (!LIB || !LIB.length) {
-    content.innerHTML = `<div class="lib-empty">
+    document.getElementById('lib-page-body').innerHTML = `<div class="lib-empty">
       <div class="lib-empty-orb">📁</div>
       <div>资料库暂无 PDF<br><small style="color:var(--text-2)">上传的 Lesson PDF 会自动出现在这里</small></div>
     </div>`;
     return;
   }
+  const q = (document.getElementById('lib-search').value || '').trim().toLowerCase();
   const dirMeta = {
     nce1: { name: '新概念英语第一册', emoji: '📘', books: ['nce1'] },
     nce2: { name: '新概念英语第二册', emoji: '📗', books: ['nce2'] },
@@ -561,23 +603,30 @@ function renderLibrary() {
   let html = '';
   for (const dirKey of ['nce1', 'nce2', 'nce3', 'nce4']) {
     const meta = dirMeta[dirKey];
-    const items = LIB.filter(i => meta.books.includes(i.book));
+    let items = LIB.filter(i => meta.books.includes(i.book));
+    if (q) {
+      items = items.filter(i => i.name.toLowerCase().includes(q) || String(i.lesson).includes(q));
+    }
     if (!items.length) continue;
-    // 默认收起: 只显示册目录, 点击展开该册 PDF
-    html += `<div class="lib-dir">
+    // 搜索时全部展开, 否则默认收起
+    html += `<div class="lib-dir${q ? ' open' : ''}" data-book="${dirKey}">
       <div class="lib-dir-head" onclick="toggleLibDir(this)">
         <span class="lib-arrow">▸</span>
         <span class="lib-dir-emoji">${meta.emoji}</span>
         <span class="lib-dir-name">${meta.name}</span>
         <span class="lib-dir-count">${items.length} 份</span>
+        <span class="lib-dir-select" onclick="event.stopPropagation();libSelectBook('${dirKey}')">全选</span>
       </div>
       <div class="lib-grid">`;
     items.forEach((item, i) => {
       const size = item.size > 1024 * 1024 ? `${(item.size / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(item.size / 1024))}KB`;
-      const type = '笔记';   // 资料均为 hibenba 夸克英语笔记 PDF
-      html += `<div class="lib-card" style="animation-delay:${Math.min(i * 40, 500)}ms" onclick="openPdf('${encodeURIComponent(item.file)}','${escHtmlAttr(item.name)}')">
-        <div class="lib-icon">📄</div>
-        <div class="lib-card-info">
+      const type = '笔记';
+      const enc = encodeURIComponent(item.file);
+      const nameEsc = escHtmlAttr(item.name);
+      html += `<div class="lib-card" style="animation-delay:${Math.min(i * 30, 400)}ms">
+        <label class="lib-check" onclick="event.stopPropagation()"><input type="checkbox" data-file="${enc}" onchange="libUpdateSelection()"></label>
+        <div class="lib-icon" onclick="openPdf('${enc}','${nameEsc}')">📄</div>
+        <div class="lib-card-info" onclick="openPdf('${enc}','${nameEsc}')">
           <div class="lib-name">${escHtml(item.name.replace('.pdf', ''))}</div>
           <div class="lib-meta">
             <span class="lib-badge">${type}</span>
@@ -585,12 +634,72 @@ function renderLibrary() {
             <span>${size}</span>
           </div>
         </div>
-        <div class="lib-view">查看 →</div>
+        <div class="lib-actions">
+          <a class="lib-view" href="${enc}" download="${nameEsc}" onclick="event.stopPropagation()" title="下载">⬇</a>
+          <span class="lib-view" onclick="openPdf('${enc}','${nameEsc}')">查看</span>
+        </div>
       </div>`;
     });
     html += `</div></div>`;
   }
-  content.innerHTML = html;
+  if (q && !html) {
+    html = `<div class="lib-empty"><div class="lib-empty-orb">🔍</div><div>没有匹配「${escHtml(q)}」的资料</div></div>`;
+  }
+  document.getElementById('lib-page-body').innerHTML = html;
+  libUpdateSelection();
+}
+
+// 勾选状态同步
+function libUpdateSelection() {
+  const cbs = document.querySelectorAll('#lib-page-body input[type=checkbox]');
+  const btn = document.getElementById('lib-batch-dl');
+  const n = Array.from(cbs).filter(c => c.checked).length;
+  if (btn) btn.disabled = n === 0;
+}
+
+// 整册全选
+function libSelectBook(book) {
+  const dir = document.querySelector(`.lib-dir[data-book="${book}"]`);
+  if (!dir) return;
+  const cbs = dir.querySelectorAll('input[type=checkbox]');
+  const someUnchecked = Array.from(cbs).some(c => !c.checked);
+  cbs.forEach(c => c.checked = someUnchecked);
+  libUpdateSelection();
+}
+
+// 批量下载: 勾选的 PDF 打包 zip
+async function libBatchDownload() {
+  const cbs = Array.from(document.querySelectorAll('#lib-page-body input[type=checkbox]:checked'));
+  if (!cbs.length) return;
+  const btn = document.getElementById('lib-batch-dl');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 打包中…';
+  try {
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    let done = 0;
+    for (const cb of cbs) {
+      const file = decodeURIComponent(cb.dataset.file);
+      const name = file.split('/').pop();
+      const res = await fetch(file);
+      if (res.ok) zip.file(name, await res.blob());
+      done++;
+      btn.innerHTML = `⏳ ${done}/${cbs.length}`;
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `NCE资料_${cbs.length}份.zip`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+  } catch (e) {
+    alert('打包失败: ' + e.message);
+  } finally {
+    btn.innerHTML = orig;
+    libUpdateSelection();
+  }
 }
 
 // 资料库目录展开/收起 (默认收起, 点击册头切换)
@@ -598,25 +707,64 @@ function toggleLibDir(headEl) {
   headEl.parentElement.classList.toggle('open');
 }
 
-// ====== PDF 内嵌查看 ======
-function openPdf(encodedFile, name) {
+// ====== PDF 内嵌查看 (PDF.js 渲染, 兼容手机 WebView 不下载) ======
+let pdfDoc = null;
+let pdfRenderTask = null;
+let pdfCurrentUrl = '';
+
+async function openPdf(encodedFile, name) {
   const modal = document.getElementById('pdf-modal');
-  const frame = document.getElementById('pdf-frame');
   const title = document.getElementById('pdf-modal-title');
-  if (!modal || !frame) return;
-  title.textContent = name || decodeURIComponent(encodedFile);
-  frame.src = decodeURIComponent(encodedFile);
+  const pagesEl = document.getElementById('pdf-pages');
+  const loadingEl = document.getElementById('pdf-loading');
+  const dlBtn = document.getElementById('pdf-dl-btn');
+  if (!modal || !pagesEl) return;
+  const fileUrl = decodeURIComponent(encodedFile);
+  pdfCurrentUrl = fileUrl;
+  title.textContent = name || fileUrl.split('/').pop();
+  if (dlBtn) {
+    dlBtn.href = fileUrl;
+    dlBtn.download = (name || fileUrl.split('/').pop());
+  }
+  pagesEl.innerHTML = '';
+  loadingEl.style.display = 'flex';
+  loadingEl.textContent = '⏳ 加载 PDF 中…';
   modal.classList.add('show');
   document.body.style.overflow = 'hidden';
+  if (pdfRenderTask) { try { pdfRenderTask.cancel(); } catch (e) {} pdfRenderTask = null; }
+  pdfDoc = null;
+  try {
+    const scale = window.innerWidth < 600 ? 1.2 : 1.5;
+    pdfDoc = await pdfjsLib.getDocument(fileUrl).promise;
+    loadingEl.style.display = 'none';
+    for (let p = 1; p <= pdfDoc.numPages; p++) {
+      const page = await pdfDoc.getPage(p);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.className = 'pdf-page-canvas';
+      pagesEl.appendChild(canvas);
+      pdfRenderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport });
+      await pdfRenderTask.promise;
+      pdfRenderTask = null;
+    }
+  } catch (e) {
+    if (e.name === 'RenderingCancelledException') return;
+    loadingEl.style.display = 'flex';
+    loadingEl.textContent = 'PDF 加载失败：' + e.message;
+  }
 }
 
 function closePdfViewer(e) {
   if (e && e.target && !e.target.closest('.pdf-modal-box')) return; // 点遮罩关闭
   const modal = document.getElementById('pdf-modal');
-  const frame = document.getElementById('pdf-frame');
+  const pagesEl = document.getElementById('pdf-pages');
   if (!modal) return;
   modal.classList.remove('show');
-  if (frame) frame.src = 'about:blank';
+  if (pdfRenderTask) { try { pdfRenderTask.cancel(); } catch (err) {} pdfRenderTask = null; }
+  pdfDoc = null;
+  if (pagesEl) pagesEl.innerHTML = '';
   document.body.style.overflow = '';
 }
 
@@ -629,7 +777,12 @@ document.addEventListener('keydown', e => {
 function togglePlay() {
   if (!audio || !audio.src) return;
   if (audio.paused) {
-    audio.play();
+    const p = audio.play();
+    if (p && p.catch) p.catch(() => {
+      // iOS/微信需用户手势: 提示再点一次
+      const info = document.getElementById('listen-info');
+      if (info) info.textContent = '⚠️ 点击后请再点一次播放（微信音频需手势触发）';
+    });
   } else {
     audio.pause();
   }
@@ -723,6 +876,10 @@ function nextUnit() {
 // ====== SEARCH ======
 searchInput.addEventListener('input', () => renderUnitList());
 
+// 资料库搜索
+const libSearch = document.getElementById('lib-search');
+if (libSearch) libSearch.addEventListener('input', () => renderLibrary());
+
 // ====== 移动端侧栏 ======
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
@@ -794,6 +951,12 @@ window.prevUnit = prevUnit;
 window.nextUnit = nextUnit;
 window.toggleZhMode = toggleZhMode;
 window.showLibrary = showLibrary;
+window.openLibrary = openLibrary;
+window.closeLibrary = closeLibrary;
+window.libSearchInput = libSearchInput;
+window.libUpdateSelection = libUpdateSelection;
+window.libSelectBook = libSelectBook;
+window.libBatchDownload = libBatchDownload;
 window.renderQuiz = renderQuiz;
 window.answerChoice = answerChoice;
 window.toggleWordNote = toggleWordNote;
