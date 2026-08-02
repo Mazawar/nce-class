@@ -192,7 +192,6 @@ function headPdfChips(unit) {
       <span class="unit-pdf-icon">📄</span>
       <span class="unit-pdf-name">${escHtml(p.name.replace('.pdf', ''))}</span>
       <span class="unit-pdf-type">笔记</span>
-      <a class="unit-pdf-dl" href="${encodeURIComponent(p.file)}" download="${escHtmlAttr(p.name)}" onclick="event.stopPropagation()" title="下载笔记">⬇</a>
     </span>`;
   }).join('');
 }
