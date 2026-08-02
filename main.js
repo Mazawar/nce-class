@@ -158,6 +158,7 @@ async function selectUnit(id, tab) {
     audio.src = unit.audio;
     audio.load();
     updateTabCounts(meta);
+    renderHeadPdfs(unit);
     // 按当前 tab 渲染
     if (currentTab === 'words') renderWords(unit);
     else if (currentTab === 'grammar') renderGrammar(unit);
@@ -166,6 +167,24 @@ async function selectUnit(id, tab) {
   } catch (e) {
     content.innerHTML = `<div class="empty-state"><div class="empty-orb">⚠️</div><div class="empty-title">加载失败</div><div class="empty-sub">${e.message}</div></div>`;
   }
+}
+
+// 本课资料渲染到标题栏最右侧 (任何 tab 都显示)
+function renderHeadPdfs(unit) {
+  const box = document.getElementById('head-pdfs');
+  if (!box) return;
+  box.innerHTML = '';
+  const pdfs = (unit && unit.pdfs) || [];
+  pdfs.forEach(p => {
+    const isOdd = /Lesson(\d+)/.exec(p.name);
+    const type = isOdd && parseInt(isOdd[1], 10) % 2 === 1 ? '课文' : '练习';
+    const chip = document.createElement('span');
+    chip.className = 'unit-pdf-chip head-pdf-chip';
+    chip.title = p.name;
+    chip.innerHTML = `<span class="unit-pdf-icon">📄</span><span class="unit-pdf-name">${escHtml(p.name.replace('.pdf', ''))}</span><span class="unit-pdf-type">${type}</span>`;
+    chip.onclick = () => openPdf(encodeURIComponent(p.file), p.name);
+    box.appendChild(chip);
+  });
 }
 
 function getUnit() {
@@ -188,22 +207,6 @@ function renderUnitContent(unit) {
     </div>`;
   });
   html += `</div>`;
-  // 本课资料（关联 PDF）——紧凑胶囊标签，不列表展开
-  if (unit.pdfs && unit.pdfs.length) {
-    html += `<div class="unit-pdfs">
-      <div class="unit-pdfs-title">📎 本课资料</div>
-      <div class="unit-pdf-chips">`;
-    unit.pdfs.forEach((p, i) => {
-      const isOdd = /Lesson(\d+)/.exec(p.name);
-      const type = isOdd && parseInt(isOdd[1], 10) % 2 === 1 ? '课文' : '练习';
-      html += `<span class="unit-pdf-chip" onclick="openPdf('${encodeURIComponent(p.file)}','${escHtmlAttr(p.name)}')">
-        <span class="unit-pdf-icon">📄</span>
-        <span class="unit-pdf-name">${escHtml(p.name.replace('.pdf', ''))}</span>
-        <span class="unit-pdf-type">${type}</span>
-      </span>`;
-    });
-    html += `</div></div>`;
-  }
   html += `<div class="listen-bar">
     <button class="btn-play btn-play-listen" style="width:38px;height:38px;font-size:14px" onclick="togglePlay()">▶</button>
     <div class="listen-info" id="listen-info">点击任意句子跳转播放 · 空格播放/暂停</div>
@@ -231,7 +234,7 @@ async function switchTab(tab) {
       history.replaceState(null, '', `#/${currentBook}/${currentUnit}/${tab}`);
     }
   } catch (e) {}
-  if (tab === 'library') { renderLibrary(); content.scrollTop = 0; return; }
+  if (tab === 'library') { document.getElementById('head-pdfs').innerHTML = ''; renderLibrary(); content.scrollTop = 0; return; }
   const unit = getUnit();
   if (!unit) {
     // 数据未加载（直接点 tab 时）

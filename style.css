@@ -291,6 +291,20 @@ body::before {
 }
 .head-actions { display: flex; align-items: center; gap: 10px; }
 
+/* 本课资料胶囊: 标题栏最右侧 */
+.head-pdfs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+.head-pdf-chip {
+  padding: 6px 11px;
+  background: rgba(255,107,139,0.08);
+  border-color: rgba(255,107,139,0.3);
+}
+
 .btn-icon {
   width: 36px; height: 36px;
   border: 1px solid var(--border);
@@ -1029,25 +1043,6 @@ mark {
   background: #2b2b2b;
 }
 
-/* 课文内嵌资料区（紧凑胶囊，防列表过长） */
-.unit-pdfs {
-  margin-top: 16px;
-  padding: 14px 16px;
-  background: rgba(255,107,139,0.05);
-  border: 1px solid rgba(255,107,139,0.2);
-  border-radius: 14px;
-}
-.unit-pdfs-title {
-  font-size: 13px; font-weight: 700;
-  color: var(--text-1);
-  margin-bottom: 10px;
-  display: flex; align-items: center; gap: 6px;
-}
-.unit-pdf-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 .unit-pdf-chip {
   display: inline-flex;
   align-items: center;
@@ -1227,6 +1222,11 @@ mark {
   .head-title { font-size: 17px; }
   .head-lesson { font-size: 10px; }
   .head-actions { gap: 8px; }
+  /* 移动端: 本课资料胶囊只显示 PDF 图标, 节省标题栏空间 */
+  .head-pdfs { gap: 6px; margin-left: 8px; }
+  .head-pdf-chip { padding: 6px 9px; }
+  .head-pdf-chip .unit-pdf-name,
+  .head-pdf-chip .unit-pdf-type { display: none; }
 
   .tabs {
     padding: 0 8px;
