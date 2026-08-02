@@ -1337,7 +1337,7 @@ body.nce-sidebar-open .menu-btn { display: none; }
   pointer-events: none;
   transition: opacity .3s;
 }
-.sidebar-mask.show { opacity: 1; pointer-events: auto; }
+.sidebar-mask.show { display: block; opacity: 1; pointer-events: auto; }
 
 @media (max-width: 768px) {
   .menu-btn { display: flex; }
