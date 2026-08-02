@@ -960,42 +960,10 @@ body::before {
 /* ========== 资料库视图 ========== */
 .lib-grid {
   display: none;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
 }
 .lib-dir.open .lib-grid { display: grid; }
-.lib-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  cursor: pointer;
-  transition: all .25s;
-  animation: fadeUp .4s ease backwards;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.lib-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(56,214,196,0.4);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.3);
-}
-.lib-icon {
-  width: 40px; height: 40px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, rgba(255,107,139,0.2), rgba(255,107,139,0.08));
-  border: 1px solid rgba(255,107,139,0.3);
-  display: grid; place-items: center;
-  font-size: 19px;
-}
-.lib-name { font-size: 14px; font-weight: 700; color: var(--text-0); }
-.lib-meta { font-size: 11px; color: var(--text-2); display: flex; gap: 8px; }
-.lib-badge {
-  font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 8px;
-  background: var(--grad-soft);
-  color: var(--accent);
-}
-.lib-hint { margin-top: auto; font-size: 11px; color: var(--accent-3); display: flex; align-items: center; gap: 5px; }
 
 /* 库空态 */
 .lib-empty {
@@ -1147,8 +1115,8 @@ mark {
 .lib-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px 14px;
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--border);
   border-radius: 11px;
@@ -1161,7 +1129,14 @@ mark {
   background: rgba(255,107,139,0.08);
   transform: translateY(-3px);
 }
-.lib-icon { font-size: 20px; }
+.lib-card-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.lib-icon { font-size: 20px; flex-shrink: 0; }
 .lib-card-info { flex: 1; min-width: 0; }
 .lib-name {
   font-size: 13px;
@@ -1187,14 +1162,26 @@ mark {
   background: var(--grad-soft);
   color: var(--accent);
 }
-.lib-view {
-  font-size: 11px;
-  color: var(--accent-3);
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.lib-dl-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-2);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .2s;
   flex-shrink: 0;
 }
+.lib-dl-btn:hover {
+  border-color: var(--accent-3);
+  color: var(--accent-3);
+  background: rgba(56,214,196,0.1);
+  transform: scale(1.08);
+}
+.lib-dl-btn:active { transform: scale(0.92); }
 
 /* ========== 资料库独立页面 ========== */
 .lib-page {
@@ -1279,32 +1266,11 @@ mark {
   accent-color: var(--accent, #38d6c4);
   cursor: pointer;
 }
-.lib-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.lib-actions .lib-view {
-  font-size: 12px;
-  cursor: pointer;
-  padding: 3px 9px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  text-decoration: none;
-  transition: all .2s;
-}
-.lib-actions .lib-view:hover {
-  border-color: var(--accent-3);
-  color: var(--accent-3);
-  background: rgba(56,214,196,0.08);
-}
 @media (max-width: 768px) {
   .lib-page-head { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
   .lib-page-title { font-size: 15px; }
   .lib-page-search { order: 3; max-width: none; width: 100%; }
   .lib-page-body { padding: 14px 12px 30px; }
-  .lib-actions .lib-view { padding: 3px 7px; }
 }
 
 /* ========== 移动端适配 ========== */
@@ -1332,6 +1298,12 @@ mark {
 .menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .menu-btn.open span:nth-child(2) { opacity: 0; }
 .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* 侧栏打开时汉堡按钮移到侧栏右上角边缘(不挡品牌图标/文字) */
+body.nce-sidebar-open .menu-btn {
+  left: 282px;
+  z-index: 170;
+}
 
 .sidebar-mask {
   display: none;

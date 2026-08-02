@@ -624,19 +624,18 @@ function renderLibrary() {
       const nameEsc = escHtmlAttr(item.name);
       html += `<div class="lib-card" style="animation-delay:${Math.min(i * 30, 400)}ms">
         <label class="lib-check" onclick="event.stopPropagation()"><input type="checkbox" data-file="${enc}" onchange="libUpdateSelection()"></label>
-        <div class="lib-icon" onclick="openPdf('${enc}','${nameEsc}')">📄</div>
-        <div class="lib-card-info" onclick="openPdf('${enc}','${nameEsc}')">
-          <div class="lib-name">${escHtml(item.name.replace('.pdf', ''))}</div>
-          <div class="lib-meta">
-            <span class="lib-badge">${type}</span>
-            <span>Lesson ${item.lesson}</span>
-            <span>${size}</span>
+        <div class="lib-card-body" onclick="openPdf('${enc}','${nameEsc}')">
+          <div class="lib-icon">📄</div>
+          <div class="lib-card-info">
+            <div class="lib-name">${escHtml(item.name.replace('.pdf', ''))}</div>
+            <div class="lib-meta">
+              <span class="lib-badge">${type}</span>
+              <span>Lesson ${item.lesson}</span>
+              <span>${size}</span>
+            </div>
           </div>
         </div>
-        <div class="lib-actions">
-          <a class="lib-view" href="${enc}" download="${nameEsc}" onclick="event.stopPropagation()" title="下载">⬇</a>
-          <span class="lib-view" onclick="openPdf('${enc}','${nameEsc}')">查看</span>
-        </div>
+        <a class="lib-dl-btn" href="${enc}" download="${nameEsc}" onclick="event.stopPropagation()" title="下载 ${escHtml(item.name)}">⬇</a>
       </div>`;
     });
     html += `</div></div>`;
@@ -888,6 +887,7 @@ function toggleSidebar() {
   sb.classList.toggle('open', !isOpen);
   mask.classList.toggle('show', !isOpen);
   btn.classList.toggle('open', !isOpen);
+  document.body.classList.toggle('nce-sidebar-open', !isOpen);
   document.body.style.overflow = isOpen ? '' : 'hidden';
 }
 
