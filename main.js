@@ -33,24 +33,30 @@ const audioEl = document.getElementById('audio-player');
 // 音频播放: 自签证书下 <audio> 元素媒体加载可能被浏览器拦截,
 // 用 fetch 拉取转 Blob URL 绕开证书校验(与 PDF fetch 同理)
 let audioBlobUrl = null;
-let audioFetchFailed = false;
+let pendingPlay = false; // 用户点了播放但原生失败, 等待 fallback 后自动续播
 
 async function loadAudioWithFallback(src) {
-  audioFetchFailed = false;
+  pendingPlay = false;
   if (audioBlobUrl) { try { URL.revokeObjectURL(audioBlobUrl); } catch (e) {} audioBlobUrl = null; }
   audioEl.src = src;
   audioEl.load();
-  // 原生 <audio> 可能因证书失败, 预取一次验证; 成功则用 blob URL 兜底
+  // 原生 <audio> 可能因证书失败, 预取一次转 blob 兜底
   try {
     const res = await fetch(src);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
-    if (audioFetchFailed) return; // 已被用户切换
+    if (audioBlobUrl) { try { URL.revokeObjectURL(audioBlobUrl); } catch (e) {} }
     audioBlobUrl = URL.createObjectURL(blob);
-    // 仅当原生加载失败时才切换 blob URL
-    if (audioEl.error || audioEl.readyState === 0) {
+    // 原生失败/未就绪, 或用户已点播放 → 切到 blob 并自动续播
+    if (audioEl.error || audioEl.readyState === 0 || pendingPlay) {
       audioEl.src = audioBlobUrl;
       audioEl.load();
+      if (pendingPlay) {
+        const p = audioEl.play();
+        if (p && p.catch) p.catch(() => {});
+      }
+      const info = document.getElementById('listen-info');
+      if (info) { info.textContent = '已切换离线缓存播放'; info.style.color = 'var(--text-2)'; }
     }
   } catch (e) {
     // fetch 也失败: 保留原生错误提示
@@ -59,19 +65,22 @@ async function loadAudioWithFallback(src) {
 
 // 音频错误: 页面可见提示 (手机 WebView 无法播放时定位原因)
 audioEl.addEventListener('error', () => {
-  audioFetchFailed = true;
   const info = document.getElementById('listen-info');
-  if (info) {
-    const code = audioEl.error ? audioEl.error.code : '?';
-    info.textContent = '⚠️ 音频加载失败 (错误码 ' + code + ')，请尝试系统浏览器打开本站';
-    info.style.color = '#ff6b6b';
-  }
-  // 有 blob URL 则切换到它
   if (audioBlobUrl) {
+    // 有 blob 兜底 → 切换并自动续播 (error 通常发生在用户点播放后)
     audioEl.src = audioBlobUrl;
     audioEl.load();
-    const info = document.getElementById('listen-info');
+    const p = audioEl.play();
+    if (p && p.catch) p.catch(() => {});
     if (info) { info.textContent = '已切换离线缓存播放'; info.style.color = 'var(--text-2)'; }
+  } else {
+    // 无 blob (fetch 未完成): 标记等待, fetch 完成后自动切+播
+    pendingPlay = true;
+    const code = audioEl.error ? audioEl.error.code : '?';
+    if (info) {
+      info.textContent = '⚠️ 音频加载失败 (错误码 ' + code + ')，正在切换播放方式…';
+      info.style.color = '#ff6b6b';
+    }
   }
 });
 
@@ -809,14 +818,18 @@ document.addEventListener('keydown', e => {
 function togglePlay() {
   if (!audio || !audio.src) return;
   if (audio.paused) {
+    pendingPlay = true; // 用户表达播放意图, 原生失败时 fallback 自动续播
     const p = audio.play();
     if (p && p.catch) p.catch(() => {
-      // iOS/微信需用户手势: 提示再点一次
-      const info = document.getElementById('listen-info');
-      if (info) info.textContent = '⚠️ 点击后请再点一次播放（微信音频需手势触发）';
+      // iOS/微信需手势, 或原生 src 证书失败 → 等待 blob 兜底
+      if (!audioBlobUrl) {
+        const info = document.getElementById('listen-info');
+        if (info) info.textContent = '⚠️ 加载中，正在切换播放方式…';
+      }
     });
   } else {
     audio.pause();
+    pendingPlay = false;
   }
 }
 
