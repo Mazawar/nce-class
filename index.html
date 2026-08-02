@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新概念英语 NCE 学习站</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- 移动端汉堡按钮 -->
+  <button class="menu-btn" id="menu-btn" onclick="toggleSidebar()" aria-label="菜单">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="sidebar-mask" id="sidebar-mask" onclick="toggleSidebar()"></div>
+
+  <!-- ====== 左侧导航 ====== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">NCE</div>
+      <div class="brand-text">
+        <div class="brand-title">新概念英语</div>
+        <div class="brand-sub">Learning Studio</div>
+      </div>
+    </div>
+
+    <!-- 三册切换 -->
+    <div class="book-switch" id="book-switch"></div>
+
+    <!-- 搜索 -->
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="搜索课程 / 单词…" autocomplete="off">
+    </div>
+
+    <!-- 课程列表 -->
+    <div class="unit-list" id="unit-list"></div>
+
+    <!-- 底部 -->
+    <div class="sidebar-footer">
+      <div class="progress-mini" id="progress-mini">
+        <div class="progress-bar-mini" id="progress-bar-mini"></div>
+      </div>
+      <div class="footer-stats" id="footer-stats">—</div>
+      <button class="nav-item" id="btn-library" onclick="showLibrary()">
+        <span class="nav-icon">📁</span><span>资料库</span><span class="nav-badge" id="lib-badge">0</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ====== 主区域 ====== -->
+  <main class="main" id="main">
+
+    <!-- 顶栏（极简，非导航） -->
+    <header class="main-head">
+      <div class="head-left">
+        <div class="head-lesson" id="head-lesson">—</div>
+        <div class="head-title" id="head-title">选择课程开始学习</div>
+      </div>
+      <div class="head-actions" id="head-actions">
+        <button class="btn-icon" id="btn-zh" onclick="toggleZhMode()" title="中英切换">中</button>
+        <button class="btn-play" id="btn-play" onclick="togglePlay()">▶</button>
+        <div class="head-nav">
+          <button class="btn-icon" onclick="prevUnit()" title="上一课">‹</button>
+          <button class="btn-icon" onclick="nextUnit()" title="下一课">›</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 板块 Tab -->
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="text" onclick="switchTab('text')"><span>📖</span>课文</button>
+      <button class="tab" data-tab="words" onclick="switchTab('words')"><span>🔤</span>单词<span class="tab-count" id="tab-count-words">0</span></button>
+      <button class="tab" data-tab="grammar" onclick="switchTab('grammar')"><span>🧩</span>语法<span class="tab-count" id="tab-count-grammar">0</span></button>
+      <button class="tab" data-tab="quiz" onclick="switchTab('quiz')"><span>✏️</span>训练<span class="tab-count" id="tab-count-quiz">0</span></button>
+      <button class="tab" data-tab="library" onclick="switchTab('library')"><span>📁</span>资料库<span class="tab-count" id="tab-count-lib">0</span></button>
+    </nav>
+
+    <!-- 内容 -->
+    <div class="content" id="content">
+      <div class="empty-state">
+        <div class="empty-orb">📚</div>
+        <div class="empty-title">欢迎来到新概念英语学习站</div>
+        <div class="empty-sub">从左侧选择课程，开始你的英语之旅</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<audio id="audio-player" preload="auto"></audio>
+
+<!-- PDF 内嵌查看器 -->
+<div class="pdf-modal" id="pdf-modal" onclick="closePdfViewer(event)">
+  <div class="pdf-modal-box">
+    <div class="pdf-modal-head">
+      <div class="pdf-modal-title" id="pdf-modal-title">PDF</div>
+      <button class="btn-icon" onclick="closePdfViewer()" title="关闭">✕</button>
+    </div>
+    <iframe class="pdf-frame" id="pdf-frame" src="about:blank"></iframe>
+  </div>
+</div>
+
+<script type="module" src="/main.js"></script>
+</body>
+</html>

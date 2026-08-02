@@ -1,0 +1,14 @@
+{
+  "name": "nce-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:data": "python3 scripts/build-data.py",
+    "dev": "vite",
+    "build": "npm run build:data && vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

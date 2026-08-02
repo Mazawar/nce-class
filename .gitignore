@@ -1,0 +1,26 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+public/data/
+
+# 数据（大文件，按 data/SOURCES.md 可重新获取）
+data/audio/
+data/lrc/
+data/stardict.db
+data/NCE1-book.json
+data/NCE2-book.json
+data/NCE3-book.json
+data/NCE2/
+data/NCE3/
+data/NCE4/
+data/notes/
+
+# 用户 PDF 讲义
+library/
+
+# 系统/临时
+.DS_Store
+*.log
+__pycache__/
