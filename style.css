@@ -291,20 +291,6 @@ body::before {
 }
 .head-actions { display: flex; align-items: center; gap: 10px; }
 
-/* 本课资料胶囊: 标题栏最右侧 */
-.head-pdfs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 12px;
-  flex-shrink: 0;
-}
-.head-pdf-chip {
-  padding: 6px 11px;
-  background: rgba(255,107,139,0.08);
-  border-color: rgba(255,107,139,0.3);
-}
-
 .btn-icon {
   width: 36px; height: 36px;
   border: 1px solid var(--border);
@@ -430,13 +416,34 @@ body::before {
   to { opacity: 1; transform: translateY(0); }
 }
 .lesson-header {
-  display: flex; align-items: baseline; gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 14px;
 }
-.lesson-head-title { font-size: 19px; font-weight: 800; }
+.lesson-head-left { min-width: 0; flex: 1; }
+.lesson-head-title {
+  font-size: 19px; font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .lesson-head-sub { font-size: 12px; color: var(--text-2); }
+/* 本课资料胶囊: 课文标题最右侧 */
+.lesson-head-pdfs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.lesson-head-pdfs .head-pdf-chip {
+  padding: 6px 11px;
+  background: rgba(255,107,139,0.08);
+  border-color: rgba(255,107,139,0.3);
+}
 
 .lines { display: flex; flex-direction: column; gap: 2px; }
 .line {
@@ -1222,11 +1229,10 @@ mark {
   .head-title { font-size: 17px; }
   .head-lesson { font-size: 10px; }
   .head-actions { gap: 8px; }
-  /* 移动端: 本课资料胶囊只显示 PDF 图标, 节省标题栏空间 */
-  .head-pdfs { gap: 6px; margin-left: 8px; }
-  .head-pdf-chip { padding: 6px 9px; }
-  .head-pdf-chip .unit-pdf-name,
-  .head-pdf-chip .unit-pdf-type { display: none; }
+  /* 移动端: 课文标题旁的本课资料胶囊只显示 PDF 图标, 保证与标题同行 */
+  .lesson-head-pdfs .unit-pdf-name,
+  .lesson-head-pdfs .unit-pdf-type { display: none; }
+  .lesson-head-pdfs .head-pdf-chip { padding: 5px 8px; }
 
   .tabs {
     padding: 0 8px;
@@ -1272,6 +1278,7 @@ mark {
 /* 平板 */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar { width: 250px; min-width: 250px; }
+  .lesson-head-pdfs .unit-pdf-type { display: none; }
 }
 
 /* 极窄屏额外优化 */
