@@ -1309,11 +1309,24 @@ mark {
 .menu-btn.open span:nth-child(2) { opacity: 0; }
 .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* 侧栏打开时汉堡按钮移到侧栏右上角边缘(不挡品牌图标/文字) */
-body.nce-sidebar-open .menu-btn {
-  left: 282px;
-  z-index: 170;
+/* 侧栏打开时汉堡按钮隐藏(关闭用品牌行右侧的 ✕) */
+body.nce-sidebar-open .menu-btn { display: none; }
+
+/* 移动端侧栏内的关闭按钮(品牌行右侧) */
+.sidebar-close {
+  display: none;
+  width: 34px; height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-2);
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: all .2s;
 }
+.sidebar-close:hover { background: var(--card-hover); color: var(--text-0); transform: scale(1.06); }
 
 .sidebar-mask {
   display: none;
@@ -1328,6 +1341,7 @@ body.nce-sidebar-open .menu-btn {
 
 @media (max-width: 768px) {
   .menu-btn { display: flex; }
+  .sidebar-close { display: flex; align-items: center; justify-content: center; }
 
   .sidebar {
     position: fixed;
