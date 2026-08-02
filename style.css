@@ -938,10 +938,11 @@ body::before {
 
 /* ========== 资料库视图 ========== */
 .lib-grid {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 14px;
 }
+.lib-dir.open .lib-grid { display: grid; }
 .lib-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -1094,7 +1095,19 @@ mark {
   padding: 10px 4px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 12px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+  transition: background .2s;
 }
+.lib-dir-head:hover { background: rgba(255,255,255,0.04); }
+.lib-arrow {
+  font-size: 13px;
+  color: var(--text-2);
+  display: inline-block;
+  transition: transform .25s ease;
+}
+.lib-dir.open .lib-arrow { transform: rotate(90deg); }
 .lib-dir-emoji { font-size: 20px; }
 .lib-dir-name { font-size: 16px; font-weight: 800; color: var(--text-0); }
 .lib-dir-count {
@@ -1103,7 +1116,8 @@ mark {
   background: rgba(255,255,255,0.07);
   padding: 2px 9px; border-radius: 9px;
 }
-.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.lib-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.lib-dir.open .lib-grid { display: grid; }
 .lib-card {
   display: flex;
   align-items: center;

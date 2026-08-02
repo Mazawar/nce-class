@@ -563,8 +563,10 @@ function renderLibrary() {
     const meta = dirMeta[dirKey];
     const items = LIB.filter(i => meta.books.includes(i.book));
     if (!items.length) continue;
+    // 默认收起: 只显示册目录, 点击展开该册 PDF
     html += `<div class="lib-dir">
-      <div class="lib-dir-head">
+      <div class="lib-dir-head" onclick="toggleLibDir(this)">
+        <span class="lib-arrow">▸</span>
         <span class="lib-dir-emoji">${meta.emoji}</span>
         <span class="lib-dir-name">${meta.name}</span>
         <span class="lib-dir-count">${items.length} 份</span>
@@ -590,6 +592,11 @@ function renderLibrary() {
     html += `</div></div>`;
   }
   content.innerHTML = html;
+}
+
+// 资料库目录展开/收起 (默认收起, 点击册头切换)
+function toggleLibDir(headEl) {
+  headEl.parentElement.classList.toggle('open');
 }
 
 // ====== PDF 内嵌查看 ======
@@ -791,6 +798,7 @@ window.showLibrary = showLibrary;
 window.renderQuiz = renderQuiz;
 window.answerChoice = answerChoice;
 window.toggleWordNote = toggleWordNote;
+window.toggleLibDir = toggleLibDir;
 window.answerFill = answerFill;
 window.quizNext = quizNext;
 window.quizPrev = quizPrev;
