@@ -468,14 +468,16 @@ body::before {
   border-left-color: var(--accent);
   box-shadow: 0 4px 20px rgba(109,124,255,0.12);
 }
-/* 课文行: 不换行, 超宽横向滚动 */
+/* 课文行: 不换行, 超宽横向滚动; 滚动条细但可见(提示可滑动) */
 .line-en, .line-zh {
   white-space: nowrap;
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
 }
-.line-en::-webkit-scrollbar, .line-zh::-webkit-scrollbar { height: 2px; }
-.line-en::-webkit-scrollbar-thumb, .line-zh::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 2px; border: none; }
+.line-en::-webkit-scrollbar, .line-zh::-webkit-scrollbar { height: 4px; }
+.line-en::-webkit-scrollbar-track, .line-zh::-webkit-scrollbar-track { background: transparent; }
+.line-en::-webkit-scrollbar-thumb, .line-zh::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; border: none; }
+.line-en::-webkit-scrollbar-thumb:hover, .line-zh::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
 
 .line-en {
   font-size: 15.5px; font-weight: 600;
