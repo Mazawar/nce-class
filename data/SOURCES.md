@@ -14,12 +14,17 @@ data/
 │   ├── NCE2/     #   96 个 (01.json = 第1课, 课粒度)
 │   ├── NCE3/     #   60 个 (01.json = 第1课, 课粒度)
 │   └── NCE4/     #   48 个 (01.json = 第1课, 课粒度)
-├── NCE2/         # 新概念2迷你笔记.txt（兜底语法源）
-├── NCE3/         # 新概念3册完整笔记 docx（60 课，详解补充）
-├── NCE4/         # 新概念4册完整笔记 docx（32 课，详解补充）
+├── notes-pdf/    # hibenba 夸克英语笔记 PDF（逐课详解补充） 下载中
+│   ├── nce1/     #   72 个 (Lesson001.pdf ~ Lesson144.pdf)
+│   ├── nce2/     #   97 个
+│   ├── nce3/     #   61 个
+│   └── nce4/     #   27 个
 ├── NCE1-book.json / NCE2-book.json / NCE3-book.json  # 册元数据（旧，仅 dl_audio 用）
 └── stardict.db   # ECDICT 词典（812MB，音标/释义/柯林斯星级补充）
 ```
+
+> 注: 原 data/NCE2（迷你笔记）、data/NCE3、data/NCE4（docx 笔记）已于 2026-08-02 删除，
+> 由 LiDuoMiao notes（结构化主源）+ hibenba notes-pdf（详解补充）替代。
 
 ## 四册统一结构（2026-08-02 起）
 

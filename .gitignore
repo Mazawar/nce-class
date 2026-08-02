@@ -12,10 +12,8 @@ data/stardict.db
 data/NCE1-book.json
 data/NCE2-book.json
 data/NCE3-book.json
-data/NCE2/
-data/NCE3/
-data/NCE4/
 data/notes/
+data/notes-pdf/
 
 # 用户 PDF 讲义
 library/

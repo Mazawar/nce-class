@@ -17,9 +17,6 @@ LRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data',
 AUDIO_BASE = 'audio'
 ECDB = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'stardict.db')
 NOTES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'notes')
-NCE3_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'NCE3')
-NCE4_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'NCE4')
-NCE2_NOTE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'NCE2', '新概念2迷你笔记.txt')
 OUT_DIR = '/data/.default/nce-site/public/data'
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nce1_grammar import NCE1_GRAMMAR
@@ -80,31 +77,6 @@ def merge_notes(n1, n2):
                 if key not in seen:
                     seen.add(key); merged.append(item)
         out[k] = merged
-    return out
-
-def merge_docx(d1, d2):
-    """合并两课 docx 笔记: words/grammar/sentences 拼接去重"""
-    if not d1: return d2
-    if not d2: return d1
-    out = dict(d1)
-    seen_w = {w['w'] for w in d1.get('words', [])}
-    merged_w = list(d1.get('words', []))
-    for w in d2.get('words', []):
-        if w['w'] not in seen_w:
-            merged_w.append(w); seen_w.add(w['w'])
-    out['words'] = merged_w
-    seen_g = set()
-    merged_g = []
-    for g in (d1.get('grammar', []) + d2.get('grammar', [])):
-        if g not in seen_g:
-            seen_g.add(g); merged_g.append(g)
-    out['grammar'] = merged_g
-    seen_s = set()
-    merged_s = []
-    for s in (d1.get('sentences', []) + d2.get('sentences', [])):
-        if s not in seen_s:
-            seen_s.add(s); merged_s.append(s)
-    out['sentences'] = merged_s
     return out
 
 def note_vocab_to_list(data):
@@ -266,81 +238,6 @@ def extract_vocab(en_lines):
     return order, counts
 
 # ========== NCE3/4 docx 笔记增强解析 ==========
-def parse_docx_words(path):
-    """提取词汇块: 词头行(word [ipa] pos. 释义) + 词组/例句/发音相似/同根词 作为 note; 语法段落单独提取"""
-    import docx
-    d = docx.Document(path)
-    paras = [p.text.strip() for p in d.paragraphs if p.text.strip()]
-    words = []
-    grammar = []
-    cur = None
-    cur_note = []
-    in_grammar = False
-    grammar_buf = []
-    for i, p in enumerate(paras):
-        # 词头行: word [ipa] pos. 释义 或 word [ipa] pos 释义
-        m = re.match(r'^([A-Za-z][A-Za-z\s\-]*?)\s*\[([^\]]+)\]\s*((?:n|v|vt|vi|adj|adv|prep|pron|conj|num|art|int|aux)\.?)\s*(.*)$', p)
-        if not m:
-            m = re.match(r'^([A-Za-z][A-Za-z\s\-]*?)\s*\[([^\]]+)\]\s*$', p)
-        if m:
-            if cur:
-                cur['note'] = '\n'.join(cur_note[:40])[:1500]
-                words.append(cur)
-            word = m.group(1).strip()
-            ipa = m.group(2).strip()
-            pos = m.group(3).strip() if m.lastindex >= 3 else ''
-            meaning = m.group(4).strip() if m.lastindex >= 4 else ''
-            # 若释义在下一行
-            if not meaning and i+1 < len(paras):
-                nxt = paras[i+1]
-                mm = re.match(r'^((?:n|v|vt|vi|adj|adv|prep|pron|conj|num|art|int|aux)\.?)\s*(.*)$', nxt)
-                if mm:
-                    pos = pos or mm.group(1); meaning = mm.group(2).strip()
-            if word and word.isalpha():
-                cur = {'w': word.lower(), 'ipa': ipa, 'pos': pos, 'def': meaning, 'note': ''}
-                cur_note = []
-            else:
-                cur = None
-            continue
-        # 语法段落优先检测: "语法:"开头 或 语法术语行(排除词组/例句类)
-        is_grammar = bool(re.match(r'^\s*语法[:：]', p)) or (
-            bool(re.search(r'从句|时态|语态|非谓语|虚拟|宾语从句|定语从句|同位语从句|状语从句|主语从句', p))
-            and not re.match(r'^(词组|短语|造句|例[:：]|发音|同义词|近义词|反义词|变形|搭配|使用|用法)', p)
-            and len(p) > 10
-        )
-        if is_grammar:
-            grammar.append(p[:300])
-            continue
-        if cur and p:
-            cur_note.append(p)
-            continue
-    if cur:
-        cur['note'] = '\n'.join(cur_note[:40])[:1500]
-        words.append(cur)
-    # 去重
-    seen = set(); uniq = []
-    for w in words:
-        if w['w'] not in seen:
-            seen.add(w['w']); uniq.append(w)
-    return {'words': uniq, 'grammar': grammar[:12]}
-
-# ========== NCE2 迷你笔记解析 ==========
-def parse_nce2_note(path):
-    text = open(path, encoding='utf-8').read()
-    notes = {}
-    current = None
-    for line in text.split('\n'):
-        m = re.match(r'^\(Lesson\)([\d-]+)', line.strip())
-        if m:
-            current = m.group(1)
-            notes[current] = []
-            continue
-        if current and line.strip():
-            s = line.strip().lstrip('0123456789.\t ')
-            if s and not re.match(r'^[\d\s]+$', s):
-                notes[current].append(s)
-    return notes
-
 # ========== 用户 Lesson PDF 解析 ==========
 def parse_lesson_pdf(path):
     import subprocess, tempfile
@@ -457,20 +354,6 @@ def gen_quiz(unit_title, en_lines, zh_lines, vocab, ecd, book_level):
 def main():
     ecd = ECDICT(ECDB)
 
-    docx_cache = {}
-    nce3_files = sorted(glob.glob(f'{NCE3_DIR}/*.docx'), key=lambda f: int(re.search(r'Lesson\s*(\d+)', f).group(1)))
-    for f in nce3_files:
-        num = int(re.search(r'Lesson\s*(\d+)', f).group(1))
-        docx_cache[('nce3', num)] = parse_docx_words(f)
-    nce4_files = sorted(glob.glob(f'{NCE4_DIR}/*.docx'), key=lambda f: int(re.search(r'Lesson\s*(\d+)', f).group(1)))
-    for f in nce4_files:
-        num = int(re.search(r'Lesson\s*(\d+)', f).group(1))
-        docx_cache[('nce4', num)] = parse_docx_words(f)
-    print(f'docx 笔记: NCE3 {len(nce3_files)} 课, NCE4 {len(nce4_files)} 课')
-
-    nce2_notes = parse_nce2_note(NCE2_NOTE)
-    print(f'NCE2 迷你笔记: {len(nce2_notes)} 组')
-
     # 用户 Lesson PDF
     pdf_dir = '/data/.default/nce-site/library'
     lesson_pdfs = {}
@@ -564,21 +447,7 @@ def main():
                                   'freq': 1, 'collins': info.get('collins',0),
                                   'exchange': info.get('exchange',''), 'note': w.get('note','')})
                     seen.add(w['w'])
-            # 4. docx 笔记补充 (NCE3/4, 课粒度: 合并奇数课+偶数课)
-            if key in ('nce3', 'nce4'):
-                docx_entry = merge_docx(docx_cache.get((key, text_lesson)), docx_cache.get((key, 2*i)))
-            else:
-                docx_entry = None
-            if docx_entry and docx_entry['words']:
-                for dw in docx_entry['words']:
-                    if dw['w'] in seen: continue
-                    info = ecd.get(dw['w']) or {}
-                    vocab.append({'w': dw['w'], 'ipa': dw.get('ipa','') or info.get('ipa',''),
-                                  'pos': dw.get('pos','') or info.get('pos',''),
-                                  'def': dw.get('def','') or info.get('def',''),
-                                  'freq': 1, 'collins': info.get('collins',0),
-                                  'exchange': info.get('exchange',''), 'note': dw.get('note','')})
-                    seen.add(dw['w'])
+            # 4. (docx 笔记已移除, 由 notes-pdf 或用户 PDF 补充)
             vocab = vocab[:30]
 
             # ===== 语法: notes 结构化优先 =====
@@ -599,12 +468,6 @@ def main():
                 grammar = [{'title': g[:40], 'body': g} for g in pdf['grammar'][:8]]
             elif key == 'nce1' and i in NCE1_GRAMMAR:
                 grammar = [{'title': g, 'body': ''} for g in NCE1_GRAMMAR[i]]
-            elif key == 'nce2':
-                pair = f"{i*2-1}-{i*2}"
-                if pair in nce2_notes:
-                    grammar = [{'title': g[:40], 'body': g} for g in nce2_notes[pair][:8]]
-            if not grammar and docx_entry and docx_entry['grammar']:
-                grammar = [{'title': g[:40], 'body': g} for g in docx_entry['grammar'][:8]]
 
             # ===== 词组 (notes phrases) =====
             phrases = []
