@@ -284,13 +284,30 @@ function renderWords(unit) {
           <span class="word-def">${escHtml(v.def || '')}</span>
           ${v.exchange ? `<span class="word-exchange" title="词形变化">${escHtml(v.exchange.replace(/[0-9]/g, '').replace(/[a-z]:/g, m => m[0] + '·'))}</span>` : ''}
         </div>
-        ${hasNote ? `<span class="word-toggle" onclick="event.stopPropagation();this.parentElement.parentElement.classList.toggle('open')">详解 ▾</span>` : ''}
+        ${hasNote ? `<span class="word-toggle" onclick="toggleWordNote(this)">详解 ▾</span>` : ''}
       </div>
       ${hasNote ? `<div class="word-note">${escHtml(v.note)}</div>` : ''}
     </div>`;
   });
   html += `</div>`;
   content.innerHTML = html;
+}
+
+// 单词详解展开/收起: 用实际高度驱动动画, 避免 max-height 固定值导致的
+// 收起"卡住"(内容高度远小于 600px 时动画前段无变化)与展开截断(内容超 600px)
+function toggleWordNote(toggleEl) {
+  const item = toggleEl.parentElement.parentElement;
+  const note = item.querySelector('.word-note');
+  if (!note) return;
+  if (item.classList.contains('open')) {
+    // 收起: 从实际高度过渡到 0
+    note.style.maxHeight = '0px';
+    item.classList.remove('open');
+  } else {
+    // 展开: 先加 open 让 padding 生效, 再按内容实际高度设置 max-height
+    item.classList.add('open');
+    note.style.maxHeight = note.scrollHeight + 'px';
+  }
 }
 
 // ====== 语法视图 ======
@@ -767,6 +784,7 @@ window.toggleZhMode = toggleZhMode;
 window.showLibrary = showLibrary;
 window.renderQuiz = renderQuiz;
 window.answerChoice = answerChoice;
+window.toggleWordNote = toggleWordNote;
 window.answerFill = answerFill;
 window.quizNext = quizNext;
 window.quizPrev = quizPrev;
