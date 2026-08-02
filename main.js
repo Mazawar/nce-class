@@ -173,12 +173,10 @@ function headPdfChips(unit) {
   const pdfs = (unit && unit.pdfs) || [];
   if (!pdfs.length) return '';
   return pdfs.map(p => {
-    const isOdd = /Lesson(\d+)/.exec(p.name);
-    const type = isOdd && parseInt(isOdd[1], 10) % 2 === 1 ? '课文' : '练习';
     return `<span class="unit-pdf-chip head-pdf-chip" onclick="openPdf('${encodeURIComponent(p.file)}','${escHtmlAttr(p.name)}')" title="${escHtmlAttr(p.name)}">
       <span class="unit-pdf-icon">📄</span>
       <span class="unit-pdf-name">${escHtml(p.name.replace('.pdf', ''))}</span>
-      <span class="unit-pdf-type">${type}</span>
+      <span class="unit-pdf-type">笔记</span>
     </span>`;
   }).join('');
 }
@@ -576,8 +574,7 @@ function renderLibrary() {
       <div class="lib-grid">`;
     items.forEach((item, i) => {
       const size = item.size > 1024 * 1024 ? `${(item.size / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(item.size / 1024))}KB`;
-      const isOdd = item.lesson % 2 === 1;
-      const type = isOdd ? '课文' : '练习';   // 所有册: 奇数=课文, 偶数=语法练习
+      const type = '笔记';   // 资料均为 hibenba 夸克英语笔记 PDF
       html += `<div class="lib-card" style="animation-delay:${Math.min(i * 40, 500)}ms" onclick="openPdf('${encodeURIComponent(item.file)}','${escHtmlAttr(item.name)}')">
         <div class="lib-icon">📄</div>
         <div class="lib-card-info">
